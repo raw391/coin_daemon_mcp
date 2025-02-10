@@ -29,30 +29,47 @@ This software allows AI systems to interact with cryptocurrency daemons. Please 
 
 **This software is in BETA. Use at your own risk.**
 
-## About
-
-This MCP server provides a standardized interface for AI assistants to interact with cryptocurrency daemon RPC interfaces. While developed and tested primarily with Zcash, it should work with most Bitcoin-derived cryptocurrency daemons that follow similar RPC patterns.
-
-### Supported Features
-
-- Sending transparent and shielded transactions
-- Wallet backup and import
-- Address management
-- Balance checking
-- Daemon status monitoring
-- Coin shielding operations
-- Daemon management
-
 ## Installation
+
+### 1. Install the Package
+
+You can install the package via npm:
 
 \`\`\`bash
 npm install @pooly-canada/coin-daemon-mcp
 \`\`\`
 
-## Configuration
+### 2. Configure Claude Desktop
 
-Create a configuration file that specifies your daemon(s):
+To use this MCP with Claude Desktop, you'll need to modify your Claude Desktop configuration. The configuration file is located at:
 
+- Windows: %APPDATA%\\Claude\\claude_desktop_config.json
+- macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
+
+Add the following to your configuration:
+
+\`\`\`json
+{
+  "mcpServers": {
+    "cryptocurrency": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@pooly-canada/coin-daemon-mcp"
+      ],
+      "env": {
+        "CONFIG_PATH": "path/to/your/config.json"
+      }
+    }
+  }
+}
+\`\`\`
+
+### 3. Create Configuration File
+
+Create a configuration file for your cryptocurrency daemons. Here are some example configurations:
+
+#### Basic Single Daemon Configuration
 \`\`\`json
 {
   "daemons": [
@@ -67,80 +84,158 @@ Create a configuration file that specifies your daemon(s):
 }
 \`\`\`
 
-## Usage
-
-### Starting the MCP Server
-
-\`\`\`typescript
-import { startMcpServer } from '@pooly-canada/coin-daemon-mcp';
-import config from './config.json';
-
-startMcpServer(config).catch(console.error);
+#### Multiple Daemons Configuration
+\`\`\`json
+{
+  "daemons": [
+    {
+      "coinName": "zcash",
+      "nickname": "zec-main",
+      "rpcEndpoint": "127.0.0.1:8232",
+      "rpcUser": "zec-user",
+      "rpcPassword": "zec-password"
+    },
+    {
+      "coinName": "bitcoin",
+      "nickname": "btc-main",
+      "rpcEndpoint": "127.0.0.1:8332",
+      "rpcUser": "btc-user",
+      "rpcPassword": "btc-password"
+    }
+  ]
+}
 \`\`\`
 
-### Available MCP Tools
+#### Advanced Configuration with Data Directory
+For best security practices, you might want to also use a file system MCP to manage daemon data. Here's how to configure both together:
 
-1. Basic Operations
-   - execute-command: Execute any RPC command
-   - get-command-help: Get help for commands
-   - list-daemons: List configured daemons
-   - get-daemon-info: Get daemon status
+\`\`\`json
+{
+  "mcpServers": {
+    "cryptocurrency": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@pooly-canada/coin-daemon-mcp"
+      ],
+      "env": {
+        "CONFIG_PATH": "C:/CryptoConfig/daemon-config.json"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:/CryptoData"
+      ]
+    }
+  }
+}
+\`\`\`
+
+### 4. Configure Your Cryptocurrency Daemon
+
+Make sure your cryptocurrency daemon's configuration file (e.g., zcash.conf, bitcoin.conf) has the appropriate RPC settings:
+
+\`\`\`ini
+server=1
+rpcuser=your-rpc-user
+rpcpassword=your-rpc-password
+rpcallowip=127.0.0.1
+\`\`\`
+
+### 5. Start Using the MCP
+
+After configuration, restart Claude Desktop. You should see new tools available for:
+- Sending transactions
+- Checking balances
+- Managing wallets
+- Monitoring daemon status
+- And more
+
+## Available Tools
+
+The MCP provides these main tools:
+
+1. Transaction Management
+   - send-coins: Send transparent transactions
+   - zsend-coins: Send shielded transactions (for privacy coins)
+   - shield-coins: Convert transparent to shielded funds
 
 2. Wallet Operations
-   - send-coins: Send transparent transactions
-   - zsend-coins: Send shielded transactions
-   - backup-wallet: Create wallet backup
+   - backup-wallet: Create wallet backups
    - import-wallet: Import wallet data
-   - list-addresses: Show all addresses
+   - list-addresses: Show available addresses
    - get-balance: Check balances
-   
-3. Management
-   - check-status: Get daemon status
-   - shield-coins: Convert transparent to shielded
+
+3. Daemon Management
+   - check-status: Get daemon information
    - restart-daemon: Restart the daemon
 
-## Security Recommendations
+## Security Best Practices
 
-1. Network Security
-   - Run daemons and MCP server behind a firewall
-   - Use localhost-only RPC connections when possible
-   - Implement IP whitelisting for remote connections
-   
-2. Wallet Security
-   - Use dedicated wallets for AI interactions
+1. Separate Wallets
+   - Create dedicated wallets for AI interactions
    - Keep minimal funds in accessible wallets
-   - Regular backup procedures
-   - Monitor all transactions
+   - Use test networks for development
 
-3. RPC Security
+2. RPC Security
    - Use strong, unique RPC credentials
-   - Limit RPC capabilities to required commands
-   - Regular credential rotation
-   - Audit RPC access logs
+   - Enable only necessary RPC commands
+   - Restrict RPC access to localhost
+   - Monitor RPC logs
 
-## Compatibility
+3. Data Management
+   - Regular wallet backups
+   - Secure storage of configuration files
+   - Monitoring of all transactions
+   - Regular security audits
 
-This server is tested with:
-- Zcash (Primary)
-- Bitcoin
-- Litecoin
-- Other Bitcoin-derived cryptocurrencies
+## Example Usage
 
-Some commands may vary between currencies, especially privacy-focused features.
+Here's how Claude can help with common tasks:
 
-## Contributing
+1. Checking Status:
+   "What's the current status of the Zcash daemon?"
 
-Contributions are welcome! Please read our contributing guidelines and code of conduct.
+2. Managing Balances:
+   "What's my current balance across all addresses?"
 
-## License
+3. Creating Backups:
+   "Please create a backup of my wallet"
 
-MIT
+4. Sending Transactions:
+   "Can you help me send 0.1 ZEC to address xxx?"
 
-## Disclaimer
+## Troubleshooting
 
-THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. The developers are not responsible for any loss of funds, data breaches, or other damages that may occur from using this software.
+1. Connection Issues
+   - Verify daemon is running
+   - Check RPC credentials
+   - Ensure correct port numbers
+   - Verify localhost access
+
+2. Permission Problems
+   - Check file permissions
+   - Verify RPC user rights
+   - Ensure correct configuration paths
+
+3. Transaction Issues
+   - Verify sufficient funds
+   - Check network connectivity
+   - Ensure daemon is synced
 
 ## Support
 
 - GitHub Issues: Bug reports and feature requests
 - Discussions: General questions and community support
+- Security Issues: Email security@pooly.ca
+
+## License
+
+MIT License with additional cryptocurrency operations disclaimer. See [LICENSE](LICENSE) for details.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
