@@ -54,8 +54,8 @@ Add the following to your configuration:
     "cryptocurrency": {
       "command": "npx",
       "args": [
-        "-y",
-        "@pooly-canada/coin-daemon-mcp"
+      "-y",
+        "@raw391/coin-daemon-mcp"
       ],
       "env": {
         "CONFIG_PATH": "path/to/your/config.json"
@@ -116,7 +116,7 @@ For best security practices, you might want to also use a file system MCP to man
       "command": "npx",
       "args": [
         "-y",
-        "@pooly-canada/coin-daemon-mcp"
+        "@raw391/coin-daemon-mcp"
       ],
       "env": {
         "CONFIG_PATH": "C:/CryptoConfig/daemon-config.json"
