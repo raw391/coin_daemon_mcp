@@ -1,0 +1,11 @@
+{
+  "daemons": [
+    {
+      "coinName": "zcash",
+      "nickname": "zec-main",
+      "rpcEndpoint": "127.0.0.1:8232",
+      "rpcUser": "user",
+      "rpcPassword": "password"
+    }
+  ]
+}
