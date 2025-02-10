@@ -36,7 +36,7 @@ This software allows AI systems to interact with cryptocurrency daemons. Please 
 You can install the package via npm:
 
 \`\`\`bash
-npm install @pooly-canada/coin-daemon-mcp
+npm install @raw391/coin-daemon-mcp
 \`\`\`
 
 ### 2. Configure Claude Desktop
