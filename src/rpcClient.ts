@@ -2,6 +2,14 @@ import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
 import { DaemonConfig, RpcResponse, SendCoinsParams, ShieldCoinsParams, RpcMethod, RpcErrorCode } from './types';
 import { logger } from './logger';
+import { 
+  CryptoDaemonError, 
+  RpcConnectionError,
+  mapRpcErrorToCustomError,
+  InsufficientFundsError,
+  TransactionError,
+  DaemonSyncError
+} from './errors';
 
 const DEFAULT_TIMEOUT = 30000;
 const MAX_RETRIES = 3;
@@ -36,27 +44,17 @@ export class RpcClient {
           isLastAttempt
         });
 
-        if (!isRetryable || isLastAttempt) throw error;
+        if (!isRetryable || isLastAttempt) {
+          if (error instanceof CryptoDaemonError) {
+            throw error;
+          }
+          throw new RpcConnectionError(this.endpoint, error.message);
+        }
 
-        const delay = RETRY_DELAY * attempt;
-        logger.debug('RPC', `Retrying in ${delay}ms`, {
-          daemon: this.daemonNickname,
-          attempt,
-          delay
-        });
-
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
       }
     }
-    throw new Error('Retry operation failed');
-  }
-
-  private isRetryableError(error: any): boolean {
-    if (error.name === 'AbortError') return true;
-    if (error.name === 'FetchError') return true;
-    if (error.message?.includes('ECONNREFUSED')) return true;
-    if (error.message?.includes('socket hang up')) return true;
-    return false;
+    throw new RpcConnectionError(this.endpoint, 'Max retries exceeded');
   }
 
   private async makeRequest<T = any>(method: RpcMethod, params: any[] = []): Promise<T> {
@@ -74,11 +72,6 @@ export class RpcClient {
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
         try {
-          logger.debug('RPC', `Making request to ${method}`, {
-            daemon: this.daemonNickname,
-            params
-          });
-
           const response = await fetch(this.endpoint, {
             method: 'POST',
             headers: {
@@ -97,25 +90,18 @@ export class RpcClient {
           clearTimeout(timeoutId);
 
           if (!response.ok) {
-            const errorText = await response.text().catch(() => 'No error details available');
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            throw new RpcConnectionError(this.endpoint, `HTTP ${response.status}`);
           }
 
           const data: RpcResponse<T> = await response.json();
           if (data.error) {
-            const code = data.error.code;
-            const knownError = Object.values(RpcErrorCode).includes(code);
-            throw new Error(
-              knownError 
-                ? `RPC error ${RpcErrorCode[code]}: ${data.error.message}`
-                : `RPC error ${code}: ${data.error.message}`
-            );
+            throw mapRpcErrorToCustomError(data.error.code, data.error.message);
           }
 
           return data.result;
         } catch (err) {
           if (err.name === 'AbortError') {
-            throw new Error(`RPC request to ${method} timed out after ${this.timeout}ms`);
+            throw new RpcConnectionError(this.endpoint, `Timeout after ${this.timeout}ms`);
           }
           throw err;
         }
@@ -141,25 +127,69 @@ export class RpcClient {
 
   async validateConnection(): Promise<void> {
     try {
-      logger.info('RPC', `Validating connection to ${this.daemonNickname}`);
-      await this.makeRequest('getinfo');
+      const info = await this.makeRequest('getinfo');
       this.connected = true;
-      logger.info('RPC', `Successfully connected to ${this.daemonNickname}`);
+      if (!info.blocks || !info.connections) {
+        throw new DaemonSyncError(info.blocks || 0, info.headers || 0);
+      }
     } catch (error) {
       this.connected = false;
-      logger.error('RPC', `Failed to connect to ${this.daemonNickname}`, { error });
-      throw new Error(`Failed to connect to RPC endpoint: ${error.message}`);
+      throw error instanceof CryptoDaemonError ? error : 
+        new RpcConnectionError(this.endpoint, error.message);
     }
   }
 
-  // Base RPC operations remain the same but now use enhanced error handling
-  async getHelp(command?: string): Promise<string> {
-    return this.makeRequest('help', command ? [command] : []);
+  async sendCoins({ address, amount, comment = "", subtractFee = false }: SendCoinsParams): Promise<string> {
+    try {
+      return await this.makeRequest('sendtoaddress', [address, amount, comment, "", subtractFee]);
+    } catch (error) {
+      if (error instanceof InsufficientFundsError) {
+        throw error;
+      }
+      throw new TransactionError(`Failed to send coins: ${error.message}`);
+    }
   }
 
-  async getInfo(): Promise<any> {
-    return this.makeRequest('getinfo');
+  async zSendCoins(fromAddress: string, toAddress: string, amount: number, memo?: string): Promise<string> {
+    const recipients = [{
+      address: toAddress,
+      amount: amount,
+      ...(memo && { memo: Buffer.from(memo).toString('hex') })
+    }];
+    try {
+      return await this.makeRequest('z_sendmany', [fromAddress, recipients]);
+    } catch (error) {
+      throw new TransactionError(`Failed to send shielded transaction: ${error.message}`);
+    }
   }
 
-  // Rest of the implementation remains the same...
+  async getBalance(): Promise<any> {
+    const transparentBalance = await this.makeRequest('getbalance');
+    let shieldedBalance = 0;
+    try {
+      const zBalance = await this.makeRequest('z_gettotalbalance');
+      shieldedBalance = zBalance.private;
+    } catch (error) {
+      logger.warn('RPC', 'Failed to get shielded balance', { error: error.message });
+    }
+    return { transparent: transparentBalance, shielded: shieldedBalance };
+  }
+
+  async checkStatus(): Promise<any> {
+    const info = await this.makeRequest('getinfo');
+    const networkInfo = await this.makeRequest('getnetworkinfo');
+    const blockchainInfo = await this.makeRequest('getblockchaininfo');
+    
+    if (!blockchainInfo.blocks || blockchainInfo.blocks < blockchainInfo.headers) {
+      throw new DaemonSyncError(blockchainInfo.blocks, blockchainInfo.headers);
+    }
+
+    return {
+      version: info.version,
+      connections: networkInfo.connections,
+      blocks: blockchainInfo.blocks,
+      synced: !blockchainInfo.initialblockdownload,
+      difficulty: blockchainInfo.difficulty
+    };
+  }
 }
