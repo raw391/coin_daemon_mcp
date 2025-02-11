@@ -4,10 +4,16 @@ export interface DaemonConfig {
   rpcEndpoint: string;
   rpcUser: string;
   rpcPassword: string;
+  timeout?: number;
+  maxRetries?: number;
+  retryDelay?: number;
 }
 
 export interface ServerConfig {
   daemons: DaemonConfig[];
+  defaultTimeout?: number;
+  defaultMaxRetries?: number;
+  defaultRetryDelay?: number;
 }
 
 export interface SendCoinsParams {
@@ -72,7 +78,7 @@ export interface AddressList {
   shielded: string[];
 }
 
-export type RpcMethod = 
+export type RpcMethod =
   | 'getinfo'
   | 'help'
   | 'stop'
