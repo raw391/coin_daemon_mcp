@@ -1,0 +1,11 @@
+src/
+tests/
+examples/
+.github/
+.git/
+.gitignore
+.npmignore
+.eslintrc.json
+jest.config.js
+tsconfig.json
+*.log
