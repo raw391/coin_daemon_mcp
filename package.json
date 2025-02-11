@@ -28,7 +28,7 @@
   "author": "raw391",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.4.1",
     "node-fetch": "^3.3.0"
   },
   "devDependencies": {
