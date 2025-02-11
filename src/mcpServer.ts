@@ -3,12 +3,18 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
 import { RpcClient } from './rpcClient';
 import { ServerConfig, DaemonConfig, RpcMethod } from './types';
 import { validateConfig } from './config';
+import { logger } from './logger';
 
 class CryptoDaemonMCP {
   private clients: Map<string, RpcClient> = new Map();
   private readonly rpcTimeout: number;
 
   constructor(config: ServerConfig, rpcTimeout: number = 30000) {
+    logger.info('MCP', 'Initializing CryptoDaemonMCP', { 
+      daemonCount: config.daemons.length,
+      rpcTimeout 
+    });
+
     validateConfig(config);
     this.rpcTimeout = rpcTimeout;
     this.initializeClients(config);
@@ -16,6 +22,10 @@ class CryptoDaemonMCP {
 
   private initializeClients(config: ServerConfig) {
     for (const daemon of config.daemons) {
+      logger.info('MCP', `Initializing client for daemon: ${daemon.nickname}`, {
+        coinName: daemon.coinName,
+        endpoint: daemon.rpcEndpoint
+      });
       this.clients.set(daemon.nickname, new RpcClient(daemon, this.rpcTimeout));
     }
   }
@@ -24,17 +34,10 @@ class CryptoDaemonMCP {
     return Array.from(this.clients.keys());
   }
 
-  async executeCommand(daemon: string, command: RpcMethod, params: any[] = []): Promise<any> {
-    const client = this.clients.get(daemon);
-    if (!client) {
-      throw new Error(`Daemon ${daemon} not found`);
-    }
-    return client.makeRequest(command, params);
-  }
-
   getClient(daemon: string): RpcClient {
     const client = this.clients.get(daemon);
     if (!client) {
+      logger.error('MCP', `Daemon not found: ${daemon}`);
       throw new Error(`Daemon ${daemon} not found`);
     }
     return client;
@@ -42,6 +45,7 @@ class CryptoDaemonMCP {
 }
 
 export async function startMcpServer(config: ServerConfig) {
+  logger.info('MCP', 'Starting MCP Server');
   const cryptoMcp = new CryptoDaemonMCP(config);
 
   const server = new Server({
@@ -63,7 +67,9 @@ export async function startMcpServer(config: ServerConfig) {
     },
     async ({ daemon, command, params = [] }) => {
       try {
-        const result = await cryptoMcp.executeCommand(daemon, command as RpcMethod, params);
+        logger.info('MCP', 'Executing command', { daemon, command, params });
+        const client = cryptoMcp.getClient(daemon);
+        const result = await client.makeRequest(command as RpcMethod, params);
         return {
           content: [{
             type: "text",
@@ -71,6 +77,12 @@ export async function startMcpServer(config: ServerConfig) {
           }]
         };
       } catch (error) {
+        logger.error('MCP', 'Command execution failed', { 
+          daemon, 
+          command, 
+          params,
+          error: error.message 
+        });
         return {
           isError: true,
           content: [{
@@ -94,8 +106,15 @@ export async function startMcpServer(config: ServerConfig) {
     },
     async ({ daemon, address, amount, comment, subtractFee }) => {
       try {
+        logger.info('MCP', 'Sending coins', { 
+          daemon, 
+          address, 
+          amount,
+          subtractFee 
+        });
         const client = cryptoMcp.getClient(daemon);
         const txid = await client.sendCoins({ address, amount, comment, subtractFee });
+        logger.info('MCP', 'Coins sent successfully', { daemon, txid });
         return {
           content: [{
             type: "text",
@@ -103,6 +122,12 @@ export async function startMcpServer(config: ServerConfig) {
           }]
         };
       } catch (error) {
+        logger.error('MCP', 'Failed to send coins', {
+          daemon,
+          address,
+          amount,
+          error: error.message
+        });
         return {
           isError: true,
           content: [{
@@ -126,8 +151,15 @@ export async function startMcpServer(config: ServerConfig) {
     },
     async ({ daemon, fromAddress, toAddress, amount, memo }) => {
       try {
+        logger.info('MCP', 'Sending shielded transaction', {
+          daemon,
+          fromAddress,
+          toAddress,
+          amount
+        });
         const client = cryptoMcp.getClient(daemon);
         const opid = await client.zSendCoins(fromAddress, toAddress, amount, memo);
+        logger.info('MCP', 'Shielded transaction initiated', { daemon, opid });
         return {
           content: [{
             type: "text",
@@ -135,42 +167,17 @@ export async function startMcpServer(config: ServerConfig) {
           }]
         };
       } catch (error) {
+        logger.error('MCP', 'Failed to send shielded transaction', {
+          daemon,
+          fromAddress,
+          toAddress,
+          error: error.message
+        });
         return {
           isError: true,
           content: [{
             type: "text",
             text: `Error sending shielded transaction: ${error.message}`
-          }]
-        };
-      }
-    }
-  );
-
-  server.tool(
-    "shield-coins",
-    "Shield transparent coins to a shielded address",
-    {
-      daemon: "string",
-      fromAddress: "string",
-      toAddress: "string",
-      fee: "number?"
-    },
-    async ({ daemon, fromAddress, toAddress, fee }) => {
-      try {
-        const client = cryptoMcp.getClient(daemon);
-        const opid = await client.shieldCoins({ fromAddress, toAddress, fee });
-        return {
-          content: [{
-            type: "text",
-            text: `Shield operation initiated. Operation ID: ${opid}`
-          }]
-        };
-      } catch (error) {
-        return {
-          isError: true,
-          content: [{
-            type: "text",
-            text: `Error shielding coins: ${error.message}`
           }]
         };
       }
@@ -185,8 +192,10 @@ export async function startMcpServer(config: ServerConfig) {
     },
     async ({ daemon }) => {
       try {
+        logger.info('MCP', 'Getting balance', { daemon });
         const client = cryptoMcp.getClient(daemon);
         const balance = await client.getBalance();
+        logger.info('MCP', 'Balance retrieved', { daemon, balance });
         return {
           content: [{
             type: "text",
@@ -194,6 +203,10 @@ export async function startMcpServer(config: ServerConfig) {
           }]
         };
       } catch (error) {
+        logger.error('MCP', 'Failed to get balance', {
+          daemon,
+          error: error.message
+        });
         return {
           isError: true,
           content: [{
@@ -213,8 +226,10 @@ export async function startMcpServer(config: ServerConfig) {
     },
     async ({ daemon }) => {
       try {
+        logger.info('MCP', 'Checking daemon status', { daemon });
         const client = cryptoMcp.getClient(daemon);
         const status = await client.checkStatus();
+        logger.info('MCP', 'Status check complete', { daemon, status });
         return {
           content: [{
             type: "text",
@@ -222,6 +237,10 @@ export async function startMcpServer(config: ServerConfig) {
           }]
         };
       } catch (error) {
+        logger.error('MCP', 'Failed to check status', {
+          daemon,
+          error: error.message
+        });
         return {
           isError: true,
           content: [{
@@ -240,12 +259,14 @@ export async function startMcpServer(config: ServerConfig) {
     try {
       const client = cryptoMcp.getClient(daemon);
       await client.validateConnection();
-      console.error(`Successfully connected to daemon: ${daemon}`);
+      logger.info('MCP', `Successfully connected to daemon: ${daemon}`);
     } catch (error) {
-      console.error(`Failed to connect to daemon ${daemon}: ${error.message}`);
+      logger.error('MCP', `Failed to connect to daemon ${daemon}`, {
+        error: error.message
+      });
     }
   }
 
-  console.error('Cryptocurrency Daemon MCP Server started');
+  logger.info('MCP', 'Cryptocurrency Daemon MCP Server started');
   return server;
 }
