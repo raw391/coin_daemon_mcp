@@ -4,13 +4,17 @@
   "description": "MCP server for interacting with cryptocurrency daemon RPC interfaces",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "coin-daemon-mcp": "./dist/bin/cli.js"
+  },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
+    "start": "node dist/bin/cli.js",
+    "dev": "ts-node bin/cli.ts",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts"
+    "format": "prettier --write src/**/*.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
