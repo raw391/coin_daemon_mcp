@@ -1,5 +1,5 @@
 {
-  "name": "@pooly-canada/coin-daemon-mcp",
+  "name": "@raw391/coin-daemon-mcp",
   "version": "0.1.0-beta.1",
   "description": "MCP server for interacting with cryptocurrency daemon RPC interfaces",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "daemon",
     "ai"
   ],
-  "author": "Pooly Canada",
+  "author": "raw391",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -40,12 +40,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pooly-canada/coin_daemon_mcp.git"
+    "url": "git+https://github.com/raw391/coin_daemon_mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/pooly-canada/coin_daemon_mcp/issues"
+    "url": "https://github.com/raw391/coin_daemon_mcp/issues"
   },
-  "homepage": "https://github.com/pooly-canada/coin_daemon_mcp#readme",
+  "homepage": "https://github.com/raw391/coin_daemon_mcp#readme",
   "files": [
     "dist",
     "LICENSE",
