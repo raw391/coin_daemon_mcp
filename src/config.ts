@@ -9,48 +9,45 @@ export function validateConfig(config: ServerConfig): void {
     throw new Error('At least one daemon configuration is required');
   }
 
-  // Check for duplicate nicknames
   const nicknames = new Set<string>();
   
-  for (const daemon of config.daemons) {
-    validateDaemonConfig(daemon);
+  config.daemons.forEach((daemon, index) => {
+    try {
+      validateDaemonConfig(daemon);
+    } catch (error) {
+      throw new Error(`Daemon ${index + 1} (${daemon.nickname || 'unnamed'}): ${error.message}`);
+    }
     
     if (nicknames.has(daemon.nickname)) {
       throw new Error(`Duplicate daemon nickname found: ${daemon.nickname}`);
     }
     nicknames.add(daemon.nickname);
-  }
+  });
 }
 
 function validateDaemonConfig(config: DaemonConfig): void {
-  if (!config.coinName) {
-    throw new Error('Daemon configuration must include "coinName"');
-  }
-
-  if (!config.nickname) {
-    throw new Error('Daemon configuration must include "nickname"');
-  }
-
-  if (!config.rpcEndpoint) {
-    throw new Error('Daemon configuration must include "rpcEndpoint"');
-  }
-
-  if (!config.rpcUser) {
-    throw new Error('Daemon configuration must include "rpcUser"');
-  }
-
-  if (!config.rpcPassword) {
-    throw new Error('Daemon configuration must include "rpcPassword"');
-  }
+  const required: (keyof DaemonConfig)[] = ['coinName', 'nickname', 'rpcEndpoint', 'rpcUser', 'rpcPassword'];
+  
+  required.forEach(field => {
+    if (!config[field]) {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  });
 
   // Validate RPC endpoint format
-  const endpointParts = config.rpcEndpoint.split(':');
-  if (endpointParts.length !== 2) {
+  const endpointMatch = config.rpcEndpoint.match(/^([^:]+):(\d+)$/);
+  if (!endpointMatch) {
     throw new Error('RPC endpoint must be in format "host:port"');
   }
 
-  const port = parseInt(endpointParts[1], 10);
+  const [, host, portStr] = endpointMatch;
+  const port = parseInt(portStr, 10);
+  
+  if (host.length === 0) {
+    throw new Error('Invalid RPC host');
+  }
+
   if (isNaN(port) || port < 1 || port > 65535) {
-    throw new Error('Invalid RPC port number');
+    throw new Error('Invalid RPC port number (must be between 1-65535)');
   }
 }
