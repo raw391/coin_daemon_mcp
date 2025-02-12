@@ -1,4 +1,5 @@
 # Cryptocurrency Daemon MCP Server (BETA)
+[![smithery badge](https://smithery.ai/badge/@raw391/coin_daemon_mcp)](https://smithery.ai/server/@raw391/coin_daemon_mcp)
 
 A Model Context Protocol (MCP) server for interacting with cryptocurrency daemon RPC interfaces. This server enables AI assistants to help manage and interact with cryptocurrency nodes in a controlled manner.
 
@@ -31,13 +32,21 @@ This software allows AI systems to interact with cryptocurrency daemons. Please 
 
 ## Installation
 
+### Installing via Smithery
+
+To install Cryptocurrency Daemon Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@raw391/coin_daemon_mcp):
+
+```bash
+npx -y @smithery/cli install @raw391/coin_daemon_mcp --client claude
+```
+
 ### 1. Install the Package
 
 You can install the package via npm:
 
-\`\`\`bash
+```bash
 npm install @raw391/coin-daemon-mcp
-\`\`\`
+```
 
 ### 2. Configure Claude Desktop
 
@@ -48,7 +57,7 @@ To use this MCP with Claude Desktop, you'll need to modify your Claude Desktop c
 
 Add the following to your configuration:
 
-\`\`\`json
+```json
 {
   "mcpServers": {
     "cryptocurrency": {
@@ -63,14 +72,14 @@ Add the following to your configuration:
     }
   }
 }
-\`\`\`
+```
 
 ### 3. Create Configuration File
 
 Create a configuration file for your cryptocurrency daemons. Here are some example configurations:
 
 #### Basic Single Daemon Configuration
-\`\`\`json
+```json
 {
   "daemons": [
     {
@@ -82,10 +91,10 @@ Create a configuration file for your cryptocurrency daemons. Here are some examp
     }
   ]
 }
-\`\`\`
+```
 
 #### Multiple Daemons Configuration
-\`\`\`json
+```json
 {
   "daemons": [
     {
@@ -104,12 +113,12 @@ Create a configuration file for your cryptocurrency daemons. Here are some examp
     }
   ]
 }
-\`\`\`
+```
 
 #### Advanced Configuration with Data Directory
 For best security practices, you might want to also use a file system MCP to manage daemon data. Here's how to configure both together:
 
-\`\`\`json
+```json
 {
   "mcpServers": {
     "cryptocurrency": {
@@ -132,18 +141,18 @@ For best security practices, you might want to also use a file system MCP to man
     }
   }
 }
-\`\`\`
+```
 
 ### 4. Configure Your Cryptocurrency Daemon
 
 Make sure your cryptocurrency daemon's configuration file (e.g., zcash.conf, bitcoin.conf) has the appropriate RPC settings:
 
-\`\`\`ini
+```ini
 server=1
 rpcuser=your-rpc-user
 rpcpassword=your-rpc-password
 rpcallowip=127.0.0.1
-\`\`\`
+```
 
 ### 5. Start Using the MCP
 
