@@ -87,7 +87,7 @@ export class RpcClient {
                     clearTimeout(timeoutId);
 
                     if (!response.ok) {
-                        throw new RpcConnectionError(this._endpoint, `HTTP ${response.status}`);
+                        throw new RpcConnectionError(this._endpoint, `HTTP Error: ${response.status}`);
                     }
 
                     const responseData = await response.json();
