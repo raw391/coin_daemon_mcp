@@ -1,6 +1,6 @@
 {
   "name": "@raw391/coin-daemon-mcp",
-  "version": "0.1.0-beta.1",
+  "version": "0.2.0-beta.1",
   "description": "MCP server for interacting with cryptocurrency daemon RPC interfaces",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
