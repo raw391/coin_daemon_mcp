@@ -156,31 +156,53 @@ rpcallowip=127.0.0.1
 
 ### 5. Start Using the MCP
 
-After configuration, restart Claude Desktop. You should see new tools available for:
+After configuration, restart Claude Desktop. You should see new tools, resources, and prompts available for:
 - Sending transactions
 - Checking balances
 - Managing wallets
 - Monitoring daemon status
+- Learning about cryptocurrencies
 - And more
 
-## Available Tools
+## MCP Features
 
-The MCP provides these main tools:
+The server provides three types of MCP capabilities:
+
+### Tools
 
 1. Transaction Management
-   - send-coins: Send transparent transactions
-   - zsend-coins: Send shielded transactions (for privacy coins)
-   - shield-coins: Convert transparent to shielded funds
+   - `send-coins`: Send transparent transactions
+   - `zsend-coins`: Send shielded transactions (for privacy coins)
+   - `shield-coins`: Convert transparent to shielded funds
 
 2. Wallet Operations
-   - backup-wallet: Create wallet backups
-   - import-wallet: Import wallet data
-   - list-addresses: Show available addresses
-   - get-balance: Check balances
+   - `get-balance`: Check balances
+   - `execute-command`: Execute any supported RPC command
 
 3. Daemon Management
-   - check-status: Get daemon information
-   - restart-daemon: Restart the daemon
+   - `check-status`: Get daemon information
+
+### Resources
+
+Access valuable data and documentation:
+
+1. Documentation Resources
+   - `crypto://{coinType}/help`: Get detailed documentation for specific cryptocurrencies
+   - `daemon://{name}/help`: Get help text specific to a daemon
+
+2. Transaction History
+   - `daemon://{name}/transactions`: View recent transaction history
+
+### Prompts
+
+Pre-built templates for common workflows:
+
+1. Transaction Guidance
+   - `send-transaction-template`: Generate a guided prompt for constructing transactions
+
+2. Analysis Templates
+   - `balance-analysis`: Analyze wallet balances and fund distribution
+   - `daemon-diagnostic`: Perform a health check of a daemon
 
 ## Security Best Practices
 
@@ -211,8 +233,8 @@ Here's how Claude can help with common tasks:
 2. Managing Balances:
    "What's my current balance across all addresses?"
 
-3. Creating Backups:
-   "Please create a backup of my wallet"
+3. Learning About Cryptocurrencies:
+   "Can you explain how Zcash shielded transactions work?"
 
 4. Sending Transactions:
    "Can you help me send 0.1 ZEC to address xxx?"

@@ -79,18 +79,48 @@ export interface AddressList {
 }
 
 export type RpcMethod =
+  // General info
   | 'getinfo'
   | 'help'
   | 'stop'
+  
+  // Wallet operations
   | 'getbalance'
   | 'listaddresses'
+  | 'listreceivedbyaddress'
+  | 'getnewaddress'
+  | 'dumpprivkey'
+  | 'importprivkey'
   | 'sendtoaddress'
+  | 'listtransactions'
+  | 'backupwallet'
+  
+  // Shielded operations (Zcash & forks)
+  | 'z_getnewaddress'
+  | 'z_listaddresses'
+  | 'z_listreceivedbyaddress'
   | 'z_sendmany'
   | 'z_shieldcoinbase'
-  | 'getaddressbalance'
-  | 'backupwallet'
-  | 'z_importwallet'
-  | 'z_listaddresses'
+  | 'z_getbalance'
   | 'z_gettotalbalance'
+  | 'z_listunspent'
+  | 'z_importwallet'
+  | 'z_exportwallet'
+  | 'z_getoperationstatus'
+  | 'z_getoperationresult'
+  
+  // Blockchain and network
+  | 'getblockchaininfo'
   | 'getnetworkinfo'
-  | 'getblockchaininfo';
+  | 'getmininginfo'
+  | 'getpeerinfo'
+  | 'getblock'
+  | 'getblockhash'
+  | 'getbestblockhash'
+  | 'getdifficulty'
+  | 'gettxout'
+  | 'getrawtransaction'
+  | 'decoderawtransaction'
+  | 'validateaddress'
+  | 'getblocktemplate'
+  | 'getaddressbalance';

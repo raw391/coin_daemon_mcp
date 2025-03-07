@@ -1,5 +1,6 @@
 import { Server } from "@modelcontextprotocol/sdk/server";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp";
 import { RpcClient } from './rpcClient';
 import { ServerConfig, DaemonConfig, RpcMethod } from './types';
 import { validateConfig } from './config';
@@ -69,7 +70,69 @@ class CryptoDaemonMCP {
     }
     return client;
   }
+  
+  getCoinNames(): Map<string, string> {
+    const result = new Map<string, string>();
+    for (const [nickname, client] of this.clients.entries()) {
+      result.set(nickname, client.coinName);
+    }
+    return result;
+  }
 }
+
+const CRYPTO_HELP_MAP: Record<string, string> = {
+  bitcoin: `
+# Bitcoin RPC Guide
+
+Bitcoin Core provides a powerful RPC interface for interacting with the daemon.
+
+## Common Commands
+
+- \`getinfo\`: Get general information about the node
+- \`getbalance\`: Get wallet balance
+- \`sendtoaddress <address> <amount>\`: Send BTC to an address
+- \`listtransactions\`: List recent transactions
+- \`getnewaddress\`: Generate a new receiving address
+
+## Transaction Management
+
+- \`createrawtransaction\`: Create a transaction manually
+- \`signrawtransaction\`: Sign a raw transaction
+- \`sendrawtransaction\`: Broadcast a signed transaction
+
+## Block Information
+
+- \`getblock <hash>\`: Get block details
+- \`getblockhash <height>\`: Get block hash at height
+- \`getblockcount\`: Get current block height
+
+For more information, visit [Bitcoin Core Documentation](https://bitcoin.org/en/developer-reference)
+`,
+  zcash: `
+# Zcash RPC Guide
+
+Zcash extends Bitcoin Core with privacy features using shielded addresses.
+
+## Transparent Operations
+
+- \`getbalance\`: Get transparent balance
+- \`sendtoaddress <address> <amount>\`: Send to transparent address
+
+## Shielded Operations
+
+- \`z_getbalance <address>\`: Get balance of a shielded address
+- \`z_gettotalbalance\`: Get total balances (transparent, private, total)
+- \`z_sendmany <from> '[{"address": "to", "amount": x}]'\`: Send from one address to one or more recipients
+- \`z_listaddresses\`: List shielded addresses
+
+## Privacy Features
+
+- \`z_shieldcoinbase\`: Convert transparent funds to shielded
+- \`z_mergetoaddress\`: Merge multiple UTXOs or notes into one
+
+For more information, visit [Zcash Documentation](https://zcash.readthedocs.io/)
+`
+};
 
 export async function startMcpServer(config: ServerConfig) {
   logger.info('MCP', 'Starting MCP Server');
@@ -80,10 +143,13 @@ export async function startMcpServer(config: ServerConfig) {
     version: "1.0.0",
   }, {
     capabilities: {
-      tools: {}
+      tools: {},
+      resources: {},
+      prompts: {}
     }
   });
 
+  // TOOLS IMPLEMENTATION
   server.tool(
     "execute-command",
     "Execute a command on a specific cryptocurrency daemon",
@@ -294,6 +360,166 @@ export async function startMcpServer(config: ServerConfig) {
     }
   );
 
+  // RESOURCES IMPLEMENTATION
+
+  // Help documentation for each coin type
+  server.resource(
+    "docs",
+    new ResourceTemplate("crypto://{coinType}/help", { list: undefined }),
+    async (uri, { coinType }) => {
+      try {
+        logger.info('MCP', 'Fetching documentation', { coinType });
+        
+        let content = CRYPTO_HELP_MAP[coinType.toLowerCase()] || 
+                    `No specific documentation available for ${coinType}. Try 'bitcoin' or 'zcash' instead.`;
+                    
+        return {
+          contents: [{
+            uri: uri.href,
+            text: content,
+            mimeType: "text/markdown"
+          }]
+        };
+      } catch (error) {
+        logger.error('MCP', 'Failed to fetch documentation', {
+          coinType,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        throw error;
+      }
+    }
+  );
+
+  // Daemon help text
+  server.resource(
+    "daemon-help",
+    new ResourceTemplate("daemon://{name}/help", { list: undefined }),
+    async (uri, { name }) => {
+      try {
+        logger.info('MCP', 'Fetching daemon help', { daemon: name });
+        const client = cryptoMcp.getClient(name);
+        const helpText = await client.executeCommand<string>('help', []);
+        
+        return {
+          contents: [{
+            uri: uri.href,
+            text: helpText,
+            mimeType: "text/plain"
+          }]
+        };
+      } catch (error) {
+        logger.error('MCP', 'Failed to fetch daemon help', {
+          daemon: name,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        throw error;
+      }
+    }
+  );
+
+  // Transaction history
+  server.resource(
+    "transactions",
+    new ResourceTemplate("daemon://{name}/transactions", { list: undefined }),
+    async (uri, { name }) => {
+      try {
+        logger.info('MCP', 'Fetching transaction history', { daemon: name });
+        const client = cryptoMcp.getClient(name);
+        
+        // Get recent transactions
+        const transactions = await client.executeCommand<any[]>('listtransactions', ['*', 20]); // Last 20 transactions
+        
+        let formattedTransactions = '';
+        if (transactions && transactions.length > 0) {
+          formattedTransactions = transactions.map(tx => {
+            return `Transaction: ${tx.txid}\n` +
+                  `Amount: ${tx.amount}\n` +
+                  `Category: ${tx.category}\n` +
+                  `Confirmations: ${tx.confirmations}\n` +
+                  `Time: ${new Date(tx.time * 1000).toISOString()}\n` +
+                  '-'.repeat(40);
+          }).join('\n\n');
+        } else {
+          formattedTransactions = 'No recent transactions found.';
+        }
+        
+        return {
+          contents: [{
+            uri: uri.href,
+            text: formattedTransactions,
+            mimeType: "text/plain"
+          }]
+        };
+      } catch (error) {
+        logger.error('MCP', 'Failed to fetch transaction history', {
+          daemon: name,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        throw error;
+      }
+    }
+  );
+
+  // PROMPTS IMPLEMENTATION
+
+  // Transaction template prompt
+  server.prompt(
+    "send-transaction-template",
+    {
+      daemon: "string",
+      amount: "number?"
+    },
+    ({ daemon, amount }) => {
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to send a transaction on my ${daemon} wallet${amount ? ` for approximately ${amount} coins` : ''}. Can you help me construct this transaction step by step, explaining considerations like fees and confirmations? If I need to use any particular commands, please explain them thoroughly.`
+          }
+        }]
+      };
+    }
+  );
+
+  // Balance analysis prompt
+  server.prompt(
+    "balance-analysis",
+    {
+      daemon: "string"
+    },
+    ({ daemon }) => {
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `Can you help me analyze my ${daemon} wallet balance? I'm interested in understanding the transparent and shielded balances (if applicable), the implications of my current balance distribution, and any recommendations for better fund management.`
+          }
+        }]
+      };
+    }
+  );
+
+  // Daemon status diagnostic prompt
+  server.prompt(
+    "daemon-diagnostic",
+    {
+      daemon: "string"
+    },
+    ({ daemon }) => {
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please perform a thorough diagnostic check of my ${daemon} daemon. Analyze the status, check for any issues with connections, synchronization status, block height, and provide recommendations to improve its performance.`
+          }
+        }]
+      };
+    }
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   
@@ -311,6 +537,6 @@ export async function startMcpServer(config: ServerConfig) {
     }
   }
 
-  logger.info('MCP', 'Cryptocurrency Daemon MCP Server started');
+  logger.info('MCP', 'Cryptocurrency Daemon MCP Server started with resources and prompts support');
   return server;
 }
