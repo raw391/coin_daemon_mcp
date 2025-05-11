@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/raw391-coin-daemon-mcp-badge.png)](https://mseep.ai/app/raw391-coin-daemon-mcp)
+
 # Cryptocurrency Daemon MCP Server (BETA)
 [![smithery badge](https://smithery.ai/badge/@raw391/coin_daemon_mcp)](https://smithery.ai/server/@raw391/coin_daemon_mcp)
 
